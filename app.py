@@ -2,7 +2,9 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import os
-import io # NOVA BIBLIOTECA PARA O DOWNLOAD DO EXCEL
+import io
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 # ==========================================
 # CONFIGURAÇÃO DE ADMINISTRADORES
@@ -62,7 +64,7 @@ def exibir_logo():
         st.write("")
 
 # ==========================================
-# 1. LENDO A SUA PLANILHA REAL
+# 1. LENDO A SUA PLANILHA REAL DE COLABORADORES
 # ==========================================
 def carregar_dados_base():
     df_colaboradores = pd.read_excel('Base.xlsx', sheet_name='Colaboradores')
@@ -76,17 +78,43 @@ def carregar_dados_base():
 df_colaboradores, df_funcionarios = carregar_dados_base()
 
 # ==========================================
-# 2. INICIALIZANDO A BASE DE AVALIAÇÕES (COM CERTAME)
+# 2. CONEXÃO COM O GOOGLE SHEETS (AVALIAÇÕES)
 # ==========================================
-ARQUIVO_AVALIACOES = 'Avaliacoes_Salvas.xlsx'
-
-if 'df_avaliacoes' not in st.session_state:
-    if os.path.exists(ARQUIVO_AVALIACOES):
-        df_temp = pd.read_excel(ARQUIVO_AVALIACOES)
-        if 'Certame' not in df_temp.columns:
-            df_temp['Certame'] = 'ENARE'
-        st.session_state.df_avaliacoes = df_temp
+def conectar_google_sheets():
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    
+    # Se estiver rodando local no PC com o arquivo credenciais.json
+    if os.path.exists('credenciais.json'):
+        creds = ServiceAccountCredentials.from_json_keyfile_name('credenciais.json', scope)
     else:
+        # Se estiver rodando na nuvem do Streamlit, puxa dos segredos institucionais
+        import json
+        creds_dict = dict(st.secrets["gcp_service_account"])
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+        
+    client = gspread.authorize(creds)
+    sheet = client.open("Avaliacoes_Salvas").sheet1
+    return sheet
+
+# Inicializando e carregando os dados do Google Sheets para o Session State
+if 'df_avaliacoes' not in st.session_state:
+    try:
+        sheet = conectar_google_sheets()
+        dados = sheet.get_all_records()
+        if dados:
+            df_temp = pd.DataFrame(dados)
+            if 'Certame' not in df_temp.columns:
+                df_temp['Certame'] = 'ENARE'
+            st.session_state.df_avaliacoes = df_temp
+        else:
+            st.session_state.df_avaliacoes = pd.DataFrame(columns=[
+                'Data', 'Certame', 'Email_Avaliador', 'ID_Colaborador', 'Nome_Colaborador', 
+                'Pontualidade_Aeroporto', 'Pontualidade_Local', 
+                'Proatividade_Ocorrencias', 'Proatividade_Lancamentos', 'Proatividade_Respostas',
+                'Resolucao_Problemas', 'Observacoes'
+            ])
+    except Exception as e:
+        st.error(f"Erro ao conectar com o Google Sheets: {e}")
         st.session_state.df_avaliacoes = pd.DataFrame(columns=[
             'Data', 'Certame', 'Email_Avaliador', 'ID_Colaborador', 'Nome_Colaborador', 
             'Pontualidade_Aeroporto', 'Pontualidade_Local', 
@@ -229,25 +257,46 @@ else:
                     submit = st.form_submit_button("Gravar Avaliação no Sistema", type="primary", use_container_width=True)
                     
                     if submit:
-                        nova_avaliacao = pd.DataFrame([{
-                            'Data': datetime.now().strftime("%d/%m/%Y %H:%M"),
-                            'Certame': certame_selecionado, 
-                            'Email_Avaliador': st.session_state.email,
-                            'ID_Colaborador': id_selecionado,
-                            'Nome_Colaborador': colaborador_selecionado,
-                            'Pontualidade_Aeroporto': pont_aeroporto,
-                            'Pontualidade_Local': pont_local,
-                            'Proatividade_Ocorrencias': proat_ocorrencias,
-                            'Proatividade_Lancamentos': proat_lancamentos,
-                            'Proatividade_Respostas': proat_respostas,
-                            'Resolucao_Problemas': resolucao,
-                            'Observacoes': observacoes
-                        }])
-                        
-                        st.session_state.df_avaliacoes = pd.concat([st.session_state.df_avaliacoes, nova_avaliacao], ignore_index=True)
-                        st.session_state.df_avaliacoes.to_excel(ARQUIVO_AVALIACOES, index=False)
-                        st.success("Avaliação registrada com sucesso!")
-                        st.rerun()
+                        try:
+                            # Salva direto no Google Sheets em tempo real
+                            sheet = conectar_google_sheets()
+                            nova_linha = [
+                                datetime.now().strftime("%d/%m/%Y %H:%M"),
+                                certame_selecionado, 
+                                st.session_state.email,
+                                str(id_selecionado),
+                                colaborador_selecionado,
+                                int(pont_aeroporto),
+                                int(pont_local),
+                                int(proat_ocorrencias),
+                                int(proat_lancamentos),
+                                int(proat_respostas),
+                                int(resolucao),
+                                observacoes
+                            ]
+                            sheet.append_row(nova_linha)
+                            
+                            # Atualiza a session_state local para refletir na hora sem precisar recarregar tudo
+                            nova_avaliacao = pd.DataFrame([{
+                                'Data': datetime.now().strftime("%d/%m/%Y %H:%M"),
+                                'Certame': certame_selecionado, 
+                                'Email_Avaliador': st.session_state.email,
+                                'ID_Colaborador': id_selecionado,
+                                'Nome_Colaborador': colaborador_selecionado,
+                                'Pontualidade_Aeroporto': pont_aeroporto,
+                                'Pontualidade_Local': pont_local,
+                                'Proatividade_Ocorrencias': proat_ocorrencias,
+                                'Proatividade_Lancamentos': proat_lancamentos,
+                                'Proatividade_Respostas': proat_respostas,
+                                'Resolucao_Problemas': resolucao,
+                                'Observacoes': observacoes
+                            }])
+                            st.session_state.df_avaliacoes = pd.concat([st.session_state.df_avaliacoes, nova_avaliacao], ignore_index=True)
+                            
+                            st.success("Avaliação registrada com sucesso na nuvem!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Erro ao salvar no Google Sheets: {e}")
 
             # SEÇÃO DE RESTAURAÇÃO
             if not avaliacoes_do_usuario.empty:
@@ -259,14 +308,29 @@ else:
                     id_restaurar = opcoes_avaliados.get(colaborador_restaurar)
                     
                     if st.button("Anular e Restaurar Colaborador"):
-                        mask = ~((st.session_state.df_avaliacoes['Email_Avaliador'] == st.session_state.email) & 
-                                 (st.session_state.df_avaliacoes['ID_Colaborador'] == id_restaurar))
-                        st.session_state.df_avaliacoes = st.session_state.df_avaliacoes[mask]
-                        st.session_state.df_avaliacoes.to_excel(ARQUIVO_AVALIACOES, index=False)
-                        st.rerun()
+                        try:
+                            # Reconstrói a base tirando a linha correspondente
+                            mask = ~((st.session_state.df_avaliacoes['Email_Avaliador'] == st.session_state.email) & 
+                                     (st.session_state.df_avaliacoes['ID_Colaborador'] == id_restaurar))
+                            st.session_state.df_avaliacoes = st.session_state.df_avaliacoes[mask]
+                            
+                            # Atualiza a planilha do Google Sheets reescrevendo os dados limpos
+                            sheet = conectar_google_sheets()
+                            sheet.clear() # Limpa tudo
+                            # Recria o cabeçalho e reinsere os dados atualizados
+                            cabecalho = list(st.session_state.df_avaliacoes.columns)
+                            linhas = st.session_state.df_avaliacoes.values.tolist()
+                            sheet.append_row(cabecalho)
+                            if linhas:
+                                sheet.append_rows(linhas)
+                                
+                            st.success("Colaborador restaurado com sucesso!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Erro ao restaurar no Google Sheets: {e}")
 
     # ---------------------------------------------------------
-    # TELA DE DASHBOARD ADMIN (COM EXPORTAÇÃO EXCEL)
+    # TELA DE DASHBOARD ADMIN
     # ---------------------------------------------------------
     if eh_admin:
         with container_dashboard:
@@ -333,12 +397,10 @@ else:
                         df_ranking = df_medias.sort_values(by="Nota_Geral_Projeto", ascending=False).reset_index(drop=True)
                         
                         # --- EXPORTAÇÃO PARA EXCEL ---
-                        # Prepara o arquivo virtual Excel
                         buffer = io.BytesIO()
                         with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
                             df_ranking.to_excel(writer, sheet_name='Ranking_Desempenho', index=False)
                         
-                        # Cria o botão de download
                         st.download_button(
                             label="📥 Baixar Relatório em Excel",
                             data=buffer.getvalue(),
@@ -346,9 +408,8 @@ else:
                             mime="application/vnd.ms-excel",
                             help="Clique para baixar a tabela completa abaixo em formato Excel"
                         )
-                        st.write("") # Espaçamento
+                        st.write("") 
                         
-                        # Exibe a tabela na tela
                         st.dataframe(
                             df_ranking[['Nome_Colaborador', 'Nota_Geral_Projeto', 'Pontualidade_Local', 'Proatividade_Respostas', 'Resolucao_Problemas']].style.format("{:.1f}", subset=['Nota_Geral_Projeto', 'Pontualidade_Local', 'Proatividade_Respostas', 'Resolucao_Problemas']),
                             use_container_width=True
