@@ -11,7 +11,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 # ==========================================
 ADMINISTRADORES = [
     'leonardo.cardoso@fgv.br',
-    'admin@fgv.br'
+    'sobrecarregado@fgv.br'
 ]
 
 # ==========================================
