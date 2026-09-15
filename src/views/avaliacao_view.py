@@ -73,7 +73,8 @@ def _campo_estrelas(rotulo: str) -> int:
 
 
 def _renderizar_formulario(certame: str, pendentes: pd.DataFrame, email: str, eh_aeroporto: bool) -> None:
-    opcoes_colaboradores = dict(zip(pendentes["Nome"], pendentes["ID"]))
+    pendentes_com_nome = pendentes[pendentes["Nome"].notna()]
+    opcoes_colaboradores = dict(zip(pendentes_com_nome["Nome"], pendentes_com_nome["ID"]))
     colaborador_selecionado = st.selectbox(
         "Selecione o colaborador que atuou na sua região:",
         options=list(opcoes_colaboradores.keys()),
