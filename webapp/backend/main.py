@@ -4,6 +4,7 @@ Endpoints REST equivalentes às telas do app Streamlit original: login,
 avaliação de colaboradores e dashboard administrativo.
 """
 
+import os
 import sys
 from pathlib import Path
 from typing import Optional
@@ -62,9 +63,11 @@ def _df_para_records(df) -> list:
 
 app = FastAPI(title="Sistema de Avaliação FGV")
 
+_origens_extra = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8000", "http://127.0.0.1:8000"],
+    allow_origins=["http://localhost:8000", "http://127.0.0.1:8000", *_origens_extra],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -120,6 +123,7 @@ def login(payload: LoginRequest, response: Response):
         max_age=COOKIE_MAX_AGE,
         httponly=True,
         samesite="lax",
+        secure=os.environ.get("COOKIE_SECURE", "false").lower() == "true",
     )
     return LoginResponse(
         email=sessao.email,
