@@ -1,0 +1,135 @@
+.tab-btn {
+  color: #6b7280;
+  border-color: transparent;
+}
+
+.tab-btn--active {
+  color: #1e3a8a;
+  border-color: #1e3a8a;
+}
+
+.section-title {
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  border-left: 3px solid #1e3a8a;
+  background: #eff6ff;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.rating-field {
+  margin-bottom: 1rem;
+}
+
+.rating-field__label {
+  display: block;
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin-bottom: 0.375rem;
+}
+
+.rating-field__stars {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.star-option {
+  position: relative;
+}
+
+.star-option input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  margin: 0;
+}
+
+.star-option label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  height: 2.5rem;
+  padding: 0 0.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.1s, background 0.1s, color 0.1s;
+}
+
+.star-option label:hover {
+  border-color: #9ca3af;
+}
+
+.star-option input:checked + label {
+  border-color: #1e3a8a;
+  background: #1e3a8a;
+  color: #fff;
+}
+
+.star-option input:focus-visible + label {
+  outline: 2px solid #1e3a8a;
+  outline-offset: 2px;
+}
+
+.rank-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.75rem;
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.rank-pill--gold { background: #fef3c7; color: #92400e; }
+.rank-pill--silver { background: #f1f5f9; color: #475569; }
+.rank-pill--bronze { background: #fed7aa; color: #9a3412; }
+
+.metric-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  background: #fff;
+}
+
+.metric-card__label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.metric-card__value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin-top: 0.25rem;
+}
+
+.skeleton {
+  height: 3rem;
+  border-radius: 0.5rem;
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

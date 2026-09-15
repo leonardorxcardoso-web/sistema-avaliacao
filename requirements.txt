@@ -4,3 +4,7 @@ openpyxl
 XlsxWriter
 gspread
 oauth2client
+fastapi
+uvicorn[standard]
+itsdangerous
+

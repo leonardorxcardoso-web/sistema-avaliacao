@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="pt-BR" class="h-full bg-gray-100">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema de Avaliação FGV</title>
+  <link rel="icon" href="data:," />
+  <link rel="preconnect" href="https://fonts.bunny.net" />
+  <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ["Figtree", "ui-sans-serif", "system-ui", "sans-serif"] },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="/css/app.css" />
+</head>
+<body class="min-h-full font-sans antialiased text-gray-900 bg-gray-100">
+  <div id="app"></div>
+
+  <!-- ============================== TEMPLATES ============================== -->
+
+  <template id="tpl-login">
+    <div class="flex min-h-screen items-center justify-center bg-blue-50 px-4">
+      <div class="w-full max-w-sm">
+        <div class="mb-10 flex justify-center">
+          <img src="/assets/logo_fgv.png" alt="FGV" class="h-8 w-auto" />
+        </div>
+
+        <div class="rounded-lg bg-white p-6 shadow">
+          <div id="login-alert" class="hidden rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"></div>
+
+          <form id="login-form" class="space-y-4">
+            <div>
+              <label for="login-email" class="block text-sm font-semibold text-blue-950">E-mail corporativo</label>
+              <input type="email" id="login-email" required autocomplete="username" placeholder="seu.nome@fgv.br"
+                class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600" />
+            </div>
+            <button type="submit"
+              class="w-full rounded-md bg-blue-950 px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-white shadow-sm transition hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:ring-offset-2">
+              Entrar
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <template id="tpl-shell">
+    <div>
+      <header class="fixed top-0 z-40 w-full bg-white shadow">
+        <div class="flex flex-wrap items-center justify-between px-4 py-2.5 lg:px-6">
+          <div class="flex items-center">
+            <button id="btn-sidebar-open" type="button" aria-controls="drawer-navigation" aria-expanded="false"
+              class="mr-3 rounded p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900">
+              <span class="sr-only">Abrir menu de navegação</span>
+              <svg class="h-5 w-5" viewBox="0 0 16 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 1h14M1 6h14M1 11h7"></path>
+              </svg>
+            </button>
+            <button id="btn-logo-home" type="button" class="flex items-center">
+              <span class="sr-only">Ir para a tela inicial</span>
+              <img src="/assets/logo_fgv.png" alt="FGV" class="h-6 w-auto" />
+            </button>
+          </div>
+
+          <div class="relative">
+            <button id="user-menu-trigger" type="button"
+              class="inline-flex items-center gap-1 rounded-md bg-white py-2 text-sm font-medium leading-4 text-gray-500 transition hover:text-gray-700 focus:outline-none">
+              <span id="topbar-nome" class="font-medium text-gray-900"></span>
+              <svg class="h-4 w-4 fill-current" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+              </svg>
+            </button>
+
+            <div id="user-menu" class="absolute right-0 z-50 mt-2 hidden w-64 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5">
+              <div class="px-4 py-3">
+                <p id="user-menu-nome" class="truncate text-sm font-medium text-gray-900"></p>
+                <p id="user-menu-email" class="truncate text-xs text-gray-500"></p>
+                <p class="mt-1.5 text-xs text-gray-500">
+                  <span id="perfil-badge" class="font-medium"></span>
+                  <span class="mx-1 text-gray-300">•</span>
+                  Região: <strong id="topbar-regiao" class="text-gray-700"></strong>
+                </p>
+              </div>
+              <div class="border-t border-gray-100"></div>
+              <button id="btn-perfil" type="button"
+                class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                </svg>
+                Perfil
+              </button>
+              <div class="border-t border-gray-100"></div>
+              <button id="btn-logout" type="button"
+                class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100">
+                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l4 3m0 0l-4 3m4-3H7m3 7H5a2 2 0 01-2-2V5a2 2 0 012-2h5" />
+                </svg>
+                Sair
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="w-full bg-gradient-to-r from-blue-950 to-blue-800">
+          <div class="mx-auto max-w-screen-xl px-4 py-1">
+            <div class="flex items-center justify-center gap-4 text-sm text-white">
+              <span id="clock-date"></span>
+              <strong id="clock-time"></strong>
+              <span>(Horário de Brasília)</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div class="h-[74px]" aria-hidden="true"></div>
+
+      <div id="sidebar-overlay" class="fixed inset-0 z-40 hidden bg-gray-900/50"></div>
+      <aside id="drawer-navigation"
+        class="fixed left-0 top-0 z-50 h-screen w-72 -translate-x-full overflow-y-auto bg-white p-4 shadow-xl transition-transform duration-200 ease-in-out">
+        <div class="mb-4 flex items-center justify-between">
+          <img src="/assets/logo_fgv.png" alt="FGV" class="h-6 w-auto" />
+          <button id="btn-sidebar-close" type="button" class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-900">
+            <span class="sr-only">Fechar menu</span>
+            <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+              <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+            </svg>
+          </button>
+        </div>
+        <ul id="sidebar-nav" class="space-y-1 font-medium"></ul>
+      </aside>
+
+      <main class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <div id="tab-avaliacao"></div>
+        <div id="tab-dashboard" class="hidden"></div>
+        <div id="tab-perfil" class="hidden"></div>
+      </main>
+    </div>
+  </template>
+
+  <template id="tpl-sidebar-item">
+    <li>
+      <button type="button" data-tab=""
+        class="sidebar-link flex w-full items-center gap-3 rounded-lg p-2 text-sm text-gray-900 hover:bg-blue-50">
+        <span class="sidebar-link__icon text-gray-500"></span>
+        <span class="sidebar-link__label"></span>
+      </button>
+    </li>
+  </template>
+
+  <template id="tpl-perfil">
+    <div class="mx-auto mt-8 max-w-md">
+      <div class="rounded-lg bg-white p-6 shadow sm:p-8">
+        <h2 class="text-base font-semibold text-gray-800">Meu Perfil</h2>
+
+        <dl class="mt-6 space-y-4">
+          <div>
+            <dt class="text-xs font-medium uppercase tracking-wide text-gray-500">Nome</dt>
+            <dd id="perfil-nome" class="mt-0.5 text-sm text-gray-900"></dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium uppercase tracking-wide text-gray-500">Email</dt>
+            <dd id="perfil-email" class="mt-0.5 text-sm text-gray-900"></dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium uppercase tracking-wide text-gray-500">Perfil</dt>
+            <dd id="perfil-tipo" class="mt-0.5 text-sm text-gray-900"></dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium uppercase tracking-wide text-gray-500">Região</dt>
+            <dd id="perfil-regiao" class="mt-0.5 text-sm text-gray-900"></dd>
+          </div>
+        </dl>
+
+        <button id="btn-perfil-voltar" type="button"
+          class="mt-8 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
+          Voltar
+        </button>
+      </div>
+    </div>
+  </template>
+
+  <template id="tpl-avaliacao-concluida">
+    <div class="rounded-lg bg-white p-8 text-center shadow">
+      <svg class="mx-auto h-10 w-10 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <h2 class="mt-3 text-base font-semibold text-gray-900">Tudo em dia</h2>
+      <p class="mt-1 text-sm text-gray-500">Todas as avaliações da sua região foram concluídas com sucesso.</p>
+    </div>
+  </template>
+
+  <template id="tpl-avaliacao-vazia">
+    <div class="rounded-lg bg-white p-8 text-center shadow">
+      <svg class="mx-auto h-10 w-10 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4H18a2 2 0 002-2V7a2 2 0 00-2-2H5.062A2 2 0 003 7v12a2 2 0 002 2z" />
+      </svg>
+      <h2 class="mt-3 text-base font-semibold text-gray-900">Nenhum colaborador encontrado</h2>
+      <p class="mt-1 text-sm text-gray-500">Não há colaboradores cadastrados para a sua região.</p>
+    </div>
+  </template>
+
+  <template id="tpl-selecao-certame">
+    <div class="rounded-lg bg-white p-5 shadow sm:p-6">
+      <h2 class="text-base font-semibold text-gray-800">Configuração da Avaliação</h2>
+      <p class="mt-1 text-sm text-gray-500">
+        Cada certame tem sua própria lista de colaboradores e regiões. Selecione o certame para carregar quem você pode avaliar.
+      </p>
+      <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Certame / projeto</label>
+          <select id="select-certame"
+            class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600">
+            <option value="ENARE">ENARE</option>
+            <option value="CFC">CFC</option>
+            <option value="OAB">OAB</option>
+            <option value="Outro...">Outro...</option>
+          </select>
+        </div>
+        <div id="field-certame-custom" hidden>
+          <label class="block text-sm font-medium text-gray-700">Nome do certame</label>
+          <input type="text" id="input-certame-custom" placeholder="Digite o nome do certame"
+            class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600" />
+        </div>
+      </div>
+      <button id="btn-carregar-certame" type="button"
+        class="mt-4 rounded-md bg-blue-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-900">
+        Carregar colaboradores
+      </button>
+    </div>
+  </template>
+
+  <template id="tpl-avaliacao-form">
+    <div class="space-y-6">
+      <div class="rounded-lg bg-white p-5 shadow sm:p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Certame selecionado</span>
+            <p id="certame-atual-label" class="text-base font-semibold text-gray-800"></p>
+          </div>
+          <button id="btn-trocar-certame" type="button"
+            class="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
+            Trocar certame
+          </button>
+        </div>
+        <div class="mt-4">
+          <label class="block text-sm font-medium text-gray-700">Colaborador</label>
+          <select id="select-colaborador"
+            class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"></select>
+        </div>
+      </div>
+
+      <form id="form-avaliacao" class="rounded-lg bg-white p-5 shadow sm:p-6">
+        <p class="text-sm text-gray-500">Escala de avaliação: 1 (Insatisfatório) a 5 (Excelente)</p>
+
+        <div id="campos-local">
+          <div class="section-title">Avaliação de Pontualidade</div>
+          <div class="rating-field" data-field="pontualidade_local" data-label="Chegada no local de aplicação"></div>
+
+          <div class="section-title">Avaliação de Proatividade</div>
+          <div class="rating-field" data-field="proatividade_ocorrencias" data-label="Ocorrências"></div>
+          <div class="rating-field" data-field="proatividade_lancamentos" data-label="Lançamentos"></div>
+          <div class="rating-field" data-field="proatividade_respostas" data-label="Respostas no grupo"></div>
+
+          <div class="section-title">Resolução de Problemas</div>
+          <div class="rating-field" data-field="resolucao_problemas" data-label="Grau de resolutividade do colaborador"></div>
+        </div>
+
+        <div id="campos-aeroporto" hidden>
+          <div class="section-title">Recebimento dos Materiais</div>
+          <div class="rating-field" data-field="pontualidade_aeroporto" data-label="Pontualidade ao chegar no aeroporto"></div>
+          <div class="rating-field" data-field="facilidade_carga" data-label="Facilidade em carregar material"></div>
+          <div class="rating-field" data-field="resolutividade_despacho" data-label="Resolutividade na hora do despacho"></div>
+        </div>
+
+        <div class="section-title">Observações Qualitativas</div>
+        <textarea id="input-observacoes" rows="4" placeholder="Insira recomendações, incidentes ou elogios (opcional)"
+          class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"></textarea>
+
+        <div id="avaliacao-alert" class="mt-4 hidden rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"></div>
+        <div id="avaliacao-sucesso" class="mt-4 hidden rounded-md bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700"></div>
+
+        <button type="submit"
+          class="mt-6 w-full rounded-md bg-blue-950 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:ring-offset-2">
+          Gravar Avaliação no Sistema
+        </button>
+      </form>
+    </div>
+  </template>
+
+  <template id="tpl-restauracao">
+    <details class="mt-6 rounded-lg bg-white p-5 shadow sm:p-6">
+      <summary class="cursor-pointer text-sm font-semibold text-gray-800">
+        Precisa corrigir alguma avaliação já enviada?
+      </summary>
+      <div class="mt-4 space-y-4 border-t border-gray-100 pt-4">
+        <p class="text-sm text-gray-500">Selecione o colaborador abaixo para anular a nota anterior e avaliá-lo novamente.</p>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-end">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Colaborador</label>
+            <select id="select-restaurar"
+              class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"></select>
+          </div>
+          <div>
+            <button id="btn-restaurar" type="button"
+              class="rounded-md border border-red-300 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100">
+              Anular e Restaurar Colaborador
+            </button>
+          </div>
+        </div>
+        <div id="restaurar-alert" class="hidden rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"></div>
+        <div id="restaurar-sucesso" class="hidden rounded-md bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700"></div>
+      </div>
+    </details>
+  </template>
+
+  <template id="tpl-dashboard">
+    <div class="space-y-6">
+      <div class="rounded-lg bg-white p-5 shadow sm:p-6">
+        <h2 class="text-base font-semibold text-gray-800">Histórico Institucional de Desempenho</h2>
+        <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2" id="dashboard-filtros"></div>
+      </div>
+      <div id="dashboard-conteudo"></div>
+    </div>
+  </template>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/components.js"></script>
+  <script src="/js/views/login.js"></script>
+  <script src="/js/views/avaliacao.js"></script>
+  <script src="/js/views/dashboard.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
