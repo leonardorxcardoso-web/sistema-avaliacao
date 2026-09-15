@@ -6,12 +6,12 @@ biblioteca gspread diretamente — troca de storage (ex.: Postgres) não afeta
 chamadores.
 """
 
+import json
 import os
 from dataclasses import dataclass
 
 import gspread
 import pandas as pd
-import streamlit as st
 from oauth2client.service_account import ServiceAccountCredentials
 
 from src.config import COLUNAS_AVALIACAO, CERTAME_PADRAO
@@ -35,15 +35,7 @@ class SheetsRepository:
     @classmethod
     def conectar(cls) -> "SheetsRepository":
         try:
-            if os.path.exists(_CREDENCIAIS_LOCAL):
-                creds = ServiceAccountCredentials.from_json_keyfile_name(
-                    _CREDENCIAIS_LOCAL, _SCOPE
-                )
-            else:
-                creds_dict = dict(st.secrets["gcp_service_account"])
-                creds = ServiceAccountCredentials.from_json_keyfile_dict(
-                    creds_dict, _SCOPE
-                )
+            creds = cls._obter_credenciais()
             client = gspread.authorize(creds)
             sheet = client.open(_PLANILHA_NOME).sheet1
         except Exception as exc:  # noqa: BLE001 - traduzido para erro de domínio
@@ -51,6 +43,28 @@ class SheetsRepository:
                 f"Erro ao conectar com o Google Sheets: {exc}"
             ) from exc
         return cls(_sheet=sheet)
+
+    @staticmethod
+    def _obter_credenciais() -> ServiceAccountCredentials:
+        """Resolve as credenciais em três fontes possíveis, nesta ordem:
+
+        1. Arquivo `credenciais.json` local (uso local/dev).
+        2. Variável de ambiente `GOOGLE_CREDENTIALS_JSON` com o JSON inteiro
+           da service account (Render e qualquer host que use env vars).
+        3. `st.secrets["gcp_service_account"]` (Streamlit Community Cloud).
+        """
+        if os.path.exists(_CREDENCIAIS_LOCAL):
+            return ServiceAccountCredentials.from_json_keyfile_name(_CREDENCIAIS_LOCAL, _SCOPE)
+
+        credenciais_env = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+        if credenciais_env:
+            creds_dict = json.loads(credenciais_env)
+            return ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, _SCOPE)
+
+        import streamlit as st
+
+        creds_dict = dict(st.secrets["gcp_service_account"])
+        return ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, _SCOPE)
 
     def carregar_avaliacoes(self) -> pd.DataFrame:
         try:

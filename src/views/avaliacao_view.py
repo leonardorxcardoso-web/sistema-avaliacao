@@ -1,4 +1,10 @@
-"""Tela de registro de avaliações e restauração de avaliações enviadas."""
+"""Tela de registro de avaliações e restauração de avaliações enviadas.
+
+Fluxo em duas etapas, pois cada certame tem sua própria planilha de
+colaboradores/regiões: escolhe o certame primeiro, depois carrega quem pode
+ser avaliado naquele certame. Há dois formulários conforme o perfil:
+local (avaliador de região) ou aeroporto (equipe de logística).
+"""
 
 import pandas as pd
 import streamlit as st
@@ -18,29 +24,42 @@ from src.sheets_repository import SheetsRepository, SheetsRepositoryError
 def renderizar(base: BaseDados) -> None:
     email = st.session_state.email
     regiao = st.session_state.regiao
+    eh_aeroporto = st.session_state.eh_aeroporto
 
-    colaboradores_regiao = colaboradores_por_regiao(base, regiao)
+    certame = _selecionar_certame()
+    if not certame:
+        return
+
+    colaboradores_regiao = colaboradores_por_regiao(base, certame, regiao, ver_todos=eh_aeroporto)
     if colaboradores_regiao.empty:
-        st.warning(f"Nenhum colaborador encontrado para a região '{regiao}'.")
+        st.warning("Nenhum colaborador encontrado para a sua região neste certame.")
         return
 
     avaliacoes_usuario = avaliacoes_do_avaliador(st.session_state.df_avaliacoes, email)
-    pendentes = colaboradores_pendentes(colaboradores_regiao, avaliacoes_usuario)
+    avaliacoes_do_certame = (
+        avaliacoes_usuario[avaliacoes_usuario["Certame"] == certame]
+        if "Certame" in avaliacoes_usuario.columns
+        else avaliacoes_usuario
+    )
+    pendentes = colaboradores_pendentes(colaboradores_regiao, avaliacoes_do_certame)
 
     if pendentes.empty:
-        st.success("✅ **Excelente trabalho!** Todas as avaliações da sua região foram concluídas com sucesso.")
+        st.success("✅ **Excelente trabalho!** Todas as avaliações deste certame foram concluídas com sucesso.")
         st.balloons()
     else:
-        _renderizar_formulario(pendentes, email)
+        _renderizar_formulario(certame, pendentes, email, eh_aeroporto)
 
-    if not avaliacoes_usuario.empty:
-        _renderizar_secao_restauracao(avaliacoes_usuario)
+    if not avaliacoes_do_certame.empty:
+        _renderizar_secao_restauracao(certame, avaliacoes_do_certame)
 
 
 def _selecionar_certame() -> str:
-    certame = st.selectbox(
-        "Qual certame/projeto você está avaliando agora?", CERTAMES_DISPONIVEIS
+    st.markdown("### Configuração da Avaliação")
+    st.caption(
+        "Cada certame tem sua própria lista de colaboradores e regiões. "
+        "Selecione o certame para carregar quem você pode avaliar."
     )
+    certame = st.selectbox("Qual certame/projeto você está avaliando agora?", CERTAMES_DISPONIVEIS)
     if certame == "Outro...":
         certame = st.text_input("Digite o nome do certame:")
     return certame
@@ -53,11 +72,7 @@ def _campo_estrelas(rotulo: str) -> int:
     )
 
 
-def _renderizar_formulario(pendentes: pd.DataFrame, email: str) -> None:
-    st.markdown("### Configuração da Avaliação")
-
-    certame_selecionado = _selecionar_certame()
-
+def _renderizar_formulario(certame: str, pendentes: pd.DataFrame, email: str, eh_aeroporto: bool) -> None:
     opcoes_colaboradores = dict(zip(pendentes["Nome"], pendentes["ID"]))
     colaborador_selecionado = st.selectbox(
         "Selecione o colaborador que atuou na sua região:",
@@ -68,20 +83,26 @@ def _renderizar_formulario(pendentes: pd.DataFrame, email: str) -> None:
     with st.form("form_avaliacao", clear_on_submit=True):
         st.caption("💡 Escala de avaliação: 1 estrela (Insatisfatório) a 5 estrelas (Excelente)")
 
-        st.markdown("<div class='sessao-header'>🕐 Avaliação de Pontualidade</div>", unsafe_allow_html=True)
-        pont_aeroporto = _campo_estrelas("Chegada no aeroporto")
-        st.write("")
-        pont_local = _campo_estrelas("Chegada no local de aplicação")
+        if eh_aeroporto:
+            st.markdown("<div class='sessao-header'>✈️ Recebimento dos Materiais</div>", unsafe_allow_html=True)
+            pont_aeroporto = _campo_estrelas("Pontualidade ao chegar no aeroporto")
+            st.write("")
+            facilidade_carga = _campo_estrelas("Facilidade em carregar material")
+            st.write("")
+            resolutividade_despacho = _campo_estrelas("Resolutividade na hora do despacho")
+        else:
+            st.markdown("<div class='sessao-header'>🕐 Avaliação de Pontualidade</div>", unsafe_allow_html=True)
+            pont_local = _campo_estrelas("Chegada no local de aplicação")
 
-        st.markdown("<div class='sessao-header'>⚡ Avaliação de Proatividade</div>", unsafe_allow_html=True)
-        proat_ocorrencias = _campo_estrelas("Ocorrências")
-        st.write("")
-        proat_lancamentos = _campo_estrelas("Lançamentos")
-        st.write("")
-        proat_respostas = _campo_estrelas("Respostas no grupo")
+            st.markdown("<div class='sessao-header'>⚡ Avaliação de Proatividade</div>", unsafe_allow_html=True)
+            proat_ocorrencias = _campo_estrelas("Ocorrências")
+            st.write("")
+            proat_lancamentos = _campo_estrelas("Lançamentos")
+            st.write("")
+            proat_respostas = _campo_estrelas("Respostas no grupo")
 
-        st.markdown("<div class='sessao-header'>🛠️ Resolução de Problemas</div>", unsafe_allow_html=True)
-        resolucao = _campo_estrelas("Grau de resolutividade do colaborador")
+            st.markdown("<div class='sessao-header'>🛠️ Resolução de Problemas</div>", unsafe_allow_html=True)
+            resolucao = _campo_estrelas("Grau de resolutividade do colaborador")
 
         st.markdown("<div class='sessao-header'>📝 Observações Qualitativas</div>", unsafe_allow_html=True)
         observacoes = st.text_area("Insira recomendações, incidentes ou elogios (Opcional):", height=100)
@@ -90,13 +111,25 @@ def _renderizar_formulario(pendentes: pd.DataFrame, email: str) -> None:
         submit = st.form_submit_button("Gravar Avaliação no Sistema", type="primary", use_container_width=True)
 
         if submit:
-            _processar_submissao(
-                NovaAvaliacao(
-                    certame=certame_selecionado,
+            if eh_aeroporto:
+                nova = NovaAvaliacao(
+                    certame=certame,
                     email_avaliador=email,
                     id_colaborador=id_selecionado,
                     nome_colaborador=colaborador_selecionado,
+                    eh_aeroporto=True,
                     pontualidade_aeroporto=pont_aeroporto,
+                    facilidade_carga=facilidade_carga,
+                    resolutividade_despacho=resolutividade_despacho,
+                    observacoes=observacoes,
+                )
+            else:
+                nova = NovaAvaliacao(
+                    certame=certame,
+                    email_avaliador=email,
+                    id_colaborador=id_selecionado,
+                    nome_colaborador=colaborador_selecionado,
+                    eh_aeroporto=False,
                     pontualidade_local=pont_local,
                     proatividade_ocorrencias=proat_ocorrencias,
                     proatividade_lancamentos=proat_lancamentos,
@@ -104,7 +137,7 @@ def _renderizar_formulario(pendentes: pd.DataFrame, email: str) -> None:
                     resolucao_problemas=resolucao,
                     observacoes=observacoes,
                 )
-            )
+            _processar_submissao(nova)
 
 
 def _processar_submissao(nova: NovaAvaliacao) -> None:
@@ -126,13 +159,13 @@ def _processar_submissao(nova: NovaAvaliacao) -> None:
     st.rerun()
 
 
-def _renderizar_secao_restauracao(avaliacoes_usuario: pd.DataFrame) -> None:
+def _renderizar_secao_restauracao(certame: str, avaliacoes_do_certame: pd.DataFrame) -> None:
     st.write("")
     with st.expander("🔄 Precisa corrigir alguma avaliação já enviada?"):
         st.write("Selecione o colaborador abaixo para anular a nota anterior e avaliá-lo novamente.")
 
         opcoes_avaliados = dict(
-            zip(avaliacoes_usuario["Nome_Colaborador"], avaliacoes_usuario["ID_Colaborador"])
+            zip(avaliacoes_do_certame["Nome_Colaborador"], avaliacoes_do_certame["ID_Colaborador"])
         )
         colaborador_restaurar = st.selectbox(
             "Colaborador:", options=list(opcoes_avaliados.keys()), key="select_restaurar"
@@ -143,7 +176,7 @@ def _renderizar_secao_restauracao(avaliacoes_usuario: pd.DataFrame) -> None:
             try:
                 repo = SheetsRepository.conectar()
                 st.session_state.df_avaliacoes = restaurar_colaborador(
-                    repo, st.session_state.df_avaliacoes, st.session_state.email, id_restaurar
+                    repo, st.session_state.df_avaliacoes, st.session_state.email, certame, id_restaurar
                 )
             except SheetsRepositoryError as exc:
                 st.error(str(exc))

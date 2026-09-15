@@ -63,10 +63,23 @@ def _renderizar_painel_individual(
     st.markdown(f"<h3 style='color: #005baa;'>Desempenho: {nome_colaborador}</h3>", unsafe_allow_html=True)
     st.caption(f"Dados filtrados por: **{filtro_certame}**")
 
+    media_aeroporto = pd.Series(
+        [dados_colab["Pontualidade_Aeroporto"], dados_colab["Facilidade_Carga"], dados_colab["Resolutividade_Despacho"]]
+    ).mean()
+    media_local = pd.Series(
+        [
+            dados_colab["Pontualidade_Local"],
+            dados_colab["Proatividade_Ocorrencias"],
+            dados_colab["Proatividade_Lancamentos"],
+            dados_colab["Proatividade_Respostas"],
+            dados_colab["Resolucao_Problemas"],
+        ]
+    ).mean()
+
     c1, c2, c3 = st.columns(3)
     c1.metric("Nota Geral Média", f"{dados_colab['Nota_Geral_Projeto']:.1f} / 5.0")
-    c2.metric("Média Pontualidade", f"{dados_colab['Pontualidade_Local']:.1f}")
-    c3.metric("Média Resolutividade", f"{dados_colab['Resolucao_Problemas']:.1f}")
+    c2.metric("Média Aeroporto", f"{media_aeroporto:.1f}" if pd.notna(media_aeroporto) else "-")
+    c3.metric("Média Local/Proatividade", f"{media_local:.1f}" if pd.notna(media_local) else "-")
 
     st.write("")
     st.markdown("#### Histórico de Observações")
@@ -96,12 +109,13 @@ def _renderizar_ranking(df_medias: pd.DataFrame, filtro_certame: str) -> None:
     st.write("")
 
     colunas_exibidas = [
-        "Nome_Colaborador", "Nota_Geral_Projeto", "Pontualidade_Local",
-        "Proatividade_Respostas", "Resolucao_Problemas",
+        "Nome_Colaborador", "Nota_Geral_Projeto",
+        "Pontualidade_Aeroporto", "Facilidade_Carga", "Resolutividade_Despacho",
+        "Pontualidade_Local", "Proatividade_Respostas", "Resolucao_Problemas",
     ]
     colunas_numericas = colunas_exibidas[1:]
     st.dataframe(
-        df_ranking[colunas_exibidas].style.format("{:.1f}", subset=colunas_numericas),
+        df_ranking[colunas_exibidas].style.format("{:.1f}", subset=colunas_numericas, na_rep="-"),
         use_container_width=True,
     )
 

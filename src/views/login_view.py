@@ -35,6 +35,11 @@ def renderizar(base: BaseDados) -> None:
             else:
                 st.session_state.logado = True
                 st.session_state.email = sessao.email
+                st.session_state.nome = sessao.nome
                 st.session_state.regiao = sessao.regiao
                 st.session_state.eh_admin = sessao.eh_admin
+                st.session_state.eh_aeroporto = sessao.eh_aeroporto
+                st.session_state.eh_supervisor = sessao.eh_supervisor
+                st.session_state.pode_avaliar = sessao.pode_avaliar
+                st.session_state.pode_ver_dashboard = sessao.pode_ver_dashboard
                 st.rerun()
